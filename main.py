@@ -31,6 +31,8 @@ class App(QMainWindow):
         toolbar.addWidget(self.open_button)
         toolbar.addWidget(self.close_button)
         toolbar.addSeparator()
+        
+        toolbar.addSeparator()
         toolbar.addWidget(self.connection_status)
 
         consoleTab = v.ConsolePrintTab(self.serial_data)

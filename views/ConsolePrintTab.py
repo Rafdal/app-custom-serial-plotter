@@ -15,12 +15,23 @@ class ConsolePrintTab(QWidget):
         # Create the text edit widget
         self.text_edit = QTextEdit()
         self.text_edit.setReadOnly(True)
+        self.text_edit.setFontFamily("Courier")
         layout.addLayout(hlayout)
         layout.addWidget(self.text_edit)
 
         # Create the clear button
         self.clear_button = QPushButton("Clear")
         hlayout.addWidget(self.clear_button)
+
+        # Create the pause/continue button
+        self.pause_button = QPushButton("Pause")
+        hlayout.addWidget(self.pause_button)
+
+        # Create a flag to indicate whether the GUI should be updated
+        self.is_paused = False
+
+        # Connect the pause button
+        self.pause_button.clicked.connect(self.toggle_pause)
 
         # Create the dropdown menu
         self.format_dropdown = QComboBox()
@@ -58,6 +69,16 @@ class ConsolePrintTab(QWidget):
         self.text_edit.clear()
         self.console_output.clear()
 
+    def toggle_pause(self):
+        # Toggle the pause flag
+        self.is_paused = not self.is_paused
+
+        # Update the text of the pause button
+        if self.is_paused:
+            self.pause_button.setText("Continue")
+        else:
+            self.pause_button.setText("Pause")
+
     def update_max_chars(self):
         # Create a new deque with the new maximum length
         new_console_output = deque(self.console_output, maxlen=self.max_chars_spinbox.value())
@@ -75,8 +96,14 @@ class ConsolePrintTab(QWidget):
             data_str = "Invalid Format"
 
         # Add the new data to the deque
-        self.console_output.extend(data_str)
+        self.console_output.extend(data_str + '\n')
 
     def update_gui(self):
-        # Update the text edit with the contents of the deque
-        self.text_edit.setPlainText(''.join(self.console_output))
+        # Only update the GUI if it is not paused
+        if not self.is_paused:
+            # Update the text edit with the contents of the deque
+            self.text_edit.setPlainText(''.join(self.console_output))
+
+            # Move the scrollbar to the end
+            scrollbar = self.text_edit.verticalScrollBar()
+            scrollbar.setValue(scrollbar.maximum())

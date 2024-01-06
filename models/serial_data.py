@@ -28,15 +28,12 @@ class SerialData(QObject):
         return [port.device for port in ports]
 
     def open(self):
-        # Stop thread to avoid errors
-        if self.ser.is_open:
-            self.close()
-        
-        self.ser.port = self.serial_settings['port']
-        self.ser.baudrate = self.serial_settings['baudrate']
-        self.ser.timeout = self.serial_settings['timeout']
-        self.ser.open()
-        self.port_is_open = True
+        if not self.ser.is_open:            
+            self.ser.port = self.serial_settings['port']
+            self.ser.baudrate = self.serial_settings['baudrate']
+            self.ser.timeout = self.serial_settings['timeout']
+            self.ser.open()
+            self.port_is_open = True
 
     def close(self):
         self.port_is_open = False
