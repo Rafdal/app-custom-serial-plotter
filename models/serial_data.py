@@ -10,28 +10,30 @@ class SerialData(QObject):
         self.ser = serial.Serial()
         self.buffer = bytearray()
         self.port_is_open = False
+
+        self.settings = {
+            'header': b'\xFF\x00',
+            'baudrate': 250000,
+            'timeout': 50 / 1000,  # pyserial expects seconds
+            'expected_packet_size': 0,  # 0 means 'unknown'
+        }
+
+        self.port = ""
+
         self.read_thread = QThread()
         self.moveToThread(self.read_thread)
         self.read_thread.started.connect(self.read_data)
         self.read_thread.start()
-
-    def setup(self, port, baudrate=250000, timeout_ms=50, header=b'\xFF\x00'):
-        self.serial_settings = {
-            'header': header,
-            'port': port,
-            'baudrate': baudrate,
-            'timeout': timeout_ms / 1000  # pyserial expects seconds
-        }
     
     def port_list(self):
         ports = list_ports.comports()
         return [port.device for port in ports]
 
     def open(self):
-        if not self.ser.is_open:            
-            self.ser.port = self.serial_settings['port']
-            self.ser.baudrate = self.serial_settings['baudrate']
-            self.ser.timeout = self.serial_settings['timeout']
+        if not self.ser.is_open and self.port != "":
+            self.ser.port = self.port
+            self.ser.baudrate = self.settings['baudrate']
+            self.ser.timeout = self.settings['timeout']
             self.ser.open()
             self.port_is_open = True
 
@@ -47,9 +49,12 @@ class SerialData(QObject):
                 self.buffer.extend(data)  # Add the data to the buffer
 
                 # Process the buffer in packets
-                while self.serial_settings['header'] in self.buffer:
-                    index = self.buffer.index(self.serial_settings['header'])
+                while self.settings['header'] in self.buffer:
+                    index = self.buffer.index(self.settings['header'])
                     packet = bytes(self.buffer[:index])  # Convert bytearray to bytes
-                    self.buffer = self.buffer[index+len(self.serial_settings['header']):]  # Adjust for the length of the header
-                    if packet:  # Ignore empty packets
+                    self.buffer = self.buffer[index+len(self.settings['header']):]  # Adjust for the length of the header
+
+                    # Check if the packet is the expected size and ignore empty packets
+                    expected_size = self.settings['expected_packet_size']
+                    if (expected_size == 0 and packet) or len(packet) == expected_size:
                         self.on_data.emit(packet)

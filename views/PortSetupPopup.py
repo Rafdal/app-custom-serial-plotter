@@ -1,41 +1,74 @@
 from PyQt5.QtWidgets import QDialog, QLabel, QPushButton, QComboBox, QLineEdit, QSpinBox
-from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+from PyQt5.QtWidgets import QSizePolicy, QFrame
+
+from PyQt5.QtGui import QIntValidator
 
 class PortSetupPopup(QDialog):
-    def __init__(self):
+    def __init__(self, serial_data_model):
         super().__init__()
 
+        self.serial_data_model = serial_data_model
+
         self.setWindowTitle("Port Setup")
-
-        self.scan_button = QPushButton("Scan Ports", self)
-        self.scan_button.clicked.connect(self.scan_ports)
-
-        self.port_dropdown = QComboBox(self)
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        # self.setMinimumSize(500, 300)
 
         self.sync_bytes_input = QLineEdit(self)
 
         self.packet_size_selector = QSpinBox(self)
-        self.packet_size_selector.setMinimum(1)
+        self.packet_size_selector.setMinimum(0)
+        self.packet_size_selector.setMaximum(255)
 
-        self.connect_button = QPushButton("Connect", self)
-        self.connect_button.clicked.connect(self.connect)
+        self.baudrate_num_input = QLineEdit(self)
+        self.baudrate_num_input.setText("")
+        self.baudrate_num_input.setValidator(QIntValidator())
 
+        baud_layout = QHBoxLayout()
+        baud_layout.addWidget(QLabel("Baudrate:"))
+        baud_layout.addWidget(self.baudrate_num_input)
+
+        sync_layout = QHBoxLayout()
+        sync_layout.addWidget(QLabel("Sync Bytes Header:"))
+        sync_layout.addWidget(self.sync_bytes_input)
+
+        size_layout = QHBoxLayout()
+        size_layout.addWidget(QLabel("Expected Packet Size (bytes):"))
+        size_layout.addWidget(self.packet_size_selector)
+
+        subimt_button = QPushButton("Submit")
+        subimt_button.clicked.connect(self.subimit_settings)
+
+        # add layouts
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Select Port:"))
-        layout.addWidget(self.port_dropdown)
-        layout.addWidget(QLabel("Sync Bytes Header:"))
-        layout.addWidget(self.sync_bytes_input)
-        layout.addWidget(QLabel("Packet Size (bytes):"))
-        layout.addWidget(self.packet_size_selector)
-        layout.addWidget(self.scan_button)
-        layout.addWidget(self.connect_button)
-
+        layout.addLayout(baud_layout)
+        layout.addLayout(sync_layout)
+        layout.addSpacing(10)
+        layout.addLayout(size_layout)
+        layout.addWidget(QLabel("Size of 0 will ignore packet size check"))
+        layout.addSpacing(10)
+        layout.addWidget(subimt_button)
+        layout.addStretch()
         self.setLayout(layout)
 
-    def scan_ports(self):
-        # TODO: Implement port scanning logic
-        pass
+    def popup(self):
+        port_settings = self.serial_data_model.settings
+        self.baudrate_num_input.setText(str(port_settings['baudrate']))
+        self.sync_bytes_input.setText(port_settings['header'].hex().upper())
+        self.packet_size_selector.setValue(port_settings['expected_packet_size'])
+        self.show()
 
-    def connect(self):
-        # TODO: Implement connection logic
-        pass
+    def subimit_settings(self):
+        try:
+            self.serial_data_model.settings['baudrate'] = int(self.baudrate_num_input.text())
+            self.serial_data_model.settings['header'] = bytes.fromhex(self.sync_bytes_input.text())
+            self.serial_data_model.settings['expected_packet_size'] = self.packet_size_selector.value()
+            self.close()
+        except Exception as e:
+            dialog = QDialog()
+            dialog.setWindowTitle("Error")
+            dialog.setMinimumSize(200, 100)
+            dialog.setLayout(QVBoxLayout())
+            dialog.layout().addWidget(QLabel(str(e)))
+            dialog.exec_()
+            print(e)

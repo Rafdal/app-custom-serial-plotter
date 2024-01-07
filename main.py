@@ -15,26 +15,37 @@ class App(QMainWindow):
         # set models
         self.serial_data = m.SerialData()
 
+        # Settings Popup
+        self.settings_popup = v.PortSetupPopup(self.serial_data)
+
         # TOOL BAR
         toolbar = QToolBar()
         self.addToolBar(toolbar)
         self.port_selector = QComboBox()
+        
         self.scan_button = QPushButton('Scan')
         self.scan_button.clicked.connect(self.scan_ports)
+        
         self.open_button = QPushButton('Open')
         self.open_button.clicked.connect(self.open_port)
+        
         self.close_button = QPushButton('Close')
         self.close_button.clicked.connect(self.close_port)
+        
+        self.settings_button = QPushButton('Settings')
+        self.settings_button.clicked.connect(self.open_settings)
+
         self.connection_status = QLabel('Not Connected')
         toolbar.addWidget(self.scan_button)
         toolbar.addWidget(self.port_selector)
         toolbar.addWidget(self.open_button)
         toolbar.addWidget(self.close_button)
         toolbar.addSeparator()
-        
+        toolbar.addWidget(self.settings_button)
         toolbar.addSeparator()
         toolbar.addWidget(self.connection_status)
 
+        # TABS
         consoleTab = v.ConsolePrintTab(self.serial_data)
 
         # TAB MENU
@@ -53,16 +64,21 @@ class App(QMainWindow):
 
     def open_port(self):
         try:
-            port = self.port_selector.currentText()
-            self.serial_data.setup(port)
+            self.serial_data.port = self.port_selector.currentText()
             self.serial_data.open()
             self.connection_status.setText('Connected')
-        except:
+        except Exception as e:
             self.connection_status.setText('Failed to Connect')
+            
+            print(e) 
+
 
     def close_port(self):
         self.serial_data.close()
         self.connection_status.setText('Not Connected')
+
+    def open_settings(self):
+        self.settings_popup.popup()
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.serial_data.close()

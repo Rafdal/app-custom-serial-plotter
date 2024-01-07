@@ -25,6 +25,7 @@ class ConsolePrintTab(QWidget):
 
         # Create the pause/continue button
         self.pause_button = QPushButton("Pause")
+        self.pause_button.setStyleSheet("background-color: #E0E0E0")
         hlayout.addWidget(self.pause_button)
 
         # Create a flag to indicate whether the GUI should be updated
@@ -76,8 +77,10 @@ class ConsolePrintTab(QWidget):
         # Update the text of the pause button
         if self.is_paused:
             self.pause_button.setText("Continue")
+            self.pause_button.setStyleSheet("background-color: #00FF00")
         else:
             self.pause_button.setText("Pause")
+            self.pause_button.setStyleSheet("background-color: #E0E0E0")
 
     def update_max_chars(self):
         # Create a new deque with the new maximum length
