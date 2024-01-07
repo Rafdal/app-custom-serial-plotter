@@ -18,7 +18,7 @@ class App(QMainWindow):
         self.plot_data.setup(
             data_structure=[float,float,float,float,float,float], 
             data_labels=['ax', 'ay', 'az', 'gx', 'gy', 'gz'], 
-            buffer_size=10)
+            buffer_size=50)
 
         self.serial_data.on_data.connect(self.on_new_data)
 

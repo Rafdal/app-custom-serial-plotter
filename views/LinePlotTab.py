@@ -1,9 +1,12 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QSizePolicy
 from PyQt5.QtCore import QTimer, QThread, pyqtSignal
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 from matplotlib.lines import Line2D
+
+from PyQt5.QtCore import Qt
 
 class PlotWorker(QThread):
     data_ready = pyqtSignal(list)
@@ -21,6 +24,8 @@ class PlotWorker(QThread):
 
         self.data_ready.emit(plot_data)
 
+from PyQt5.QtWidgets import QScrollArea
+
 class LinePlotTab(QWidget):
     def __init__(self, plot_data):
         super().__init__()
@@ -32,10 +37,28 @@ class LinePlotTab(QWidget):
 
         # Create the Figure and FigureCanvas objects
         self.figure = Figure()
-        self.canvas = FigureCanvas(self.figure)
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Allow the FigureCanvas to expand
+        self.canvas.setMinimumHeight(1400)  # Set the minimum height
+        self.figure.subplots_adjust(left=0.1, right=0.98, bottom=0.02, top=0.97, hspace=0.3)  # Adjust the spacing between subplots
+        self.figure.tight_layout()  # Make the plot fit the Figure area
 
-        # Add the canvas to the layout
-        layout.addWidget(self.canvas)
+        # Create a scroll area and a container widget for the canvas
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)  # Allow the child widget to resize
+        self.canvas_container = QWidget()
+        self.canvas_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas_container_layout = QVBoxLayout()
+        self.canvas_container.setLayout(self.canvas_container_layout)
+        self.canvas_container_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.canvas_container_layout.addWidget(self.canvas)
+        self.canvas_container_layout.setStretch(0, 1)  # Set the vertical stretch factor to 1
+        self.canvas_container_layout.setContentsMargins(0, 0, 0, 0)
+        self.canvas_container_layout.setSpacing(0)
+        self.scroll_area.setWidget(self.canvas_container)
+
+        # Add the scroll area to the layout
+        layout.addWidget(self.scroll_area)
 
         # Create the subplots and Line2D objects
         self.lines = []
@@ -83,4 +106,5 @@ class LinePlotTab(QWidget):
             line.set_data(*data)
             line.axes.relim()
             line.axes.autoscale_view()
+        self.canvas.updateGeometry()
         self.canvas.draw_idle()
