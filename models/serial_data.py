@@ -15,7 +15,6 @@ class SerialData(QObject):
             'header': b'\xFF\x00',
             'baudrate': 250000,
             'timeout': 50 / 1000,  # pyserial expects seconds
-            'expected_packet_size': 0,  # 0 means 'unknown'
         }
 
         self.port = ""
@@ -54,7 +53,5 @@ class SerialData(QObject):
                     packet = bytes(self.buffer[:index])  # Convert bytearray to bytes
                     self.buffer = self.buffer[index+len(self.settings['header']):]  # Adjust for the length of the header
 
-                    # Check if the packet is the expected size and ignore empty packets
-                    expected_size = self.settings['expected_packet_size']
-                    if (expected_size == 0 and packet) or len(packet) == expected_size:
+                    if packet:  # Ignore empty packets
                         self.on_data.emit(packet)

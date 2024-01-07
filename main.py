@@ -14,9 +14,11 @@ class App(QMainWindow):
     def initUI(self):
         # set models
         self.serial_data = m.SerialData()
+        self.plot_data = m.PlotData()
 
         # Settings Popup
-        self.settings_popup = v.PortSetupPopup(self.serial_data)
+        self.port_settings_popup = v.PortSetupPopup(self.serial_data)
+        self.plot_settings_popup = v.PlotSettingsPopup(self.plot_data)
 
         # TOOL BAR
         toolbar = QToolBar()
@@ -33,7 +35,10 @@ class App(QMainWindow):
         self.close_button.clicked.connect(self.close_port)
         
         self.settings_button = QPushButton('Settings')
-        self.settings_button.clicked.connect(self.open_settings)
+        self.settings_button.clicked.connect(self.open_port_settings)
+
+        self.variables_button = QPushButton('Variables')
+        self.variables_button.clicked.connect(self.open_plot_settings)
 
         self.connection_status = QLabel('Not Connected')
         toolbar.addWidget(self.scan_button)
@@ -42,11 +47,12 @@ class App(QMainWindow):
         toolbar.addWidget(self.close_button)
         toolbar.addSeparator()
         toolbar.addWidget(self.settings_button)
+        toolbar.addWidget(self.variables_button)
         toolbar.addSeparator()
         toolbar.addWidget(self.connection_status)
 
         # TABS
-        consoleTab = v.ConsolePrintTab(self.serial_data)
+        consoleTab = v.ConsolePrintTab(self.serial_data, self.plot_data)
 
         # TAB MENU
         tab = QTabWidget()
@@ -70,15 +76,17 @@ class App(QMainWindow):
         except Exception as e:
             self.connection_status.setText('Failed to Connect')
             
-            print(e) 
-
+            print(e)
 
     def close_port(self):
         self.serial_data.close()
         self.connection_status.setText('Not Connected')
 
-    def open_settings(self):
-        self.settings_popup.popup()
+    def open_port_settings(self):
+        self.port_settings_popup.popup()
+
+    def open_plot_settings(self):
+        self.plot_settings_popup.popup()
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.serial_data.close()

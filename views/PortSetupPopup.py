@@ -16,10 +16,6 @@ class PortSetupPopup(QDialog):
 
         self.sync_bytes_input = QLineEdit(self)
 
-        self.packet_size_selector = QSpinBox(self)
-        self.packet_size_selector.setMinimum(0)
-        self.packet_size_selector.setMaximum(255)
-
         self.baudrate_num_input = QLineEdit(self)
         self.baudrate_num_input.setText("")
         self.baudrate_num_input.setValidator(QIntValidator())
@@ -32,10 +28,6 @@ class PortSetupPopup(QDialog):
         sync_layout.addWidget(QLabel("Sync Bytes Header:"))
         sync_layout.addWidget(self.sync_bytes_input)
 
-        size_layout = QHBoxLayout()
-        size_layout.addWidget(QLabel("Expected Packet Size (bytes):"))
-        size_layout.addWidget(self.packet_size_selector)
-
         subimt_button = QPushButton("Submit")
         subimt_button.clicked.connect(self.subimit_settings)
 
@@ -43,9 +35,6 @@ class PortSetupPopup(QDialog):
         layout = QVBoxLayout()
         layout.addLayout(baud_layout)
         layout.addLayout(sync_layout)
-        layout.addSpacing(10)
-        layout.addLayout(size_layout)
-        layout.addWidget(QLabel("Size of 0 will ignore packet size check"))
         layout.addSpacing(10)
         layout.addWidget(subimt_button)
         layout.addStretch()
@@ -55,14 +44,12 @@ class PortSetupPopup(QDialog):
         port_settings = self.serial_data_model.settings
         self.baudrate_num_input.setText(str(port_settings['baudrate']))
         self.sync_bytes_input.setText(port_settings['header'].hex().upper())
-        self.packet_size_selector.setValue(port_settings['expected_packet_size'])
         self.show()
 
     def subimit_settings(self):
         try:
             self.serial_data_model.settings['baudrate'] = int(self.baudrate_num_input.text())
             self.serial_data_model.settings['header'] = bytes.fromhex(self.sync_bytes_input.text())
-            self.serial_data_model.settings['expected_packet_size'] = self.packet_size_selector.value()
             self.close()
         except Exception as e:
             dialog = QDialog()
