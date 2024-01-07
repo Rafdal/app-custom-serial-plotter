@@ -52,6 +52,10 @@ class PlotSettingsPopup(QDialog):
         self.submit_button = QPushButton("Submit")
         self.submit_button.clicked.connect(self.submit_settings)
 
+        self.buffer_size_selector = QSpinBox(self)
+        self.buffer_size_selector.setRange(1, 3000)
+        self.buffer_size_selector.setValue(10)
+
         self.info_display = QTextEdit(self)
         self.info_display.setReadOnly(True)
         self.info_display.setFontFamily("Courier")
@@ -63,6 +67,8 @@ class PlotSettingsPopup(QDialog):
         add_var_layout.addWidget(self.pop_button)
 
         clear_sub_layout = QHBoxLayout()
+        clear_sub_layout.addWidget(QLabel("Buffer Size (data points):"))
+        clear_sub_layout.addWidget(self.buffer_size_selector)
         clear_sub_layout.addWidget(self.clear_button)
         clear_sub_layout.addWidget(self.submit_button)
 
@@ -75,7 +81,6 @@ class PlotSettingsPopup(QDialog):
 
     def clear_variables(self):
         self.plot_data_info = []
-        self.plot_data.setup([], [], 0)
         self.update_info_display()
 
     def pop_last_variable(self):
@@ -94,7 +99,7 @@ class PlotSettingsPopup(QDialog):
         # Save changes to the data model
         data_structure = [info['type'] for info in self.plot_data_info]
         data_labels = [info['label'] for info in self.plot_data_info]
-        self.plot_data.setup(data_structure, data_labels, self.plot_data.buffer_size)
+        self.plot_data.setup(data_structure, data_labels, self.buffer_size_selector.value())
         self.close()
 
     def update_info_display(self):
@@ -113,6 +118,7 @@ class PlotSettingsPopup(QDialog):
     def popup(self):
         # Load the current settings from the data model
         self.plot_data_info = [{'type': info['type'], 'label': info['label']} for info in self.plot_data.info]
+        self.buffer_size_selector.setValue(self.plot_data.buffer_size)
         self.update_info_display()
 
         # Display the dialog

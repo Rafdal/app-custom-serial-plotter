@@ -15,6 +15,12 @@ class App(QMainWindow):
         # set models
         self.serial_data = m.SerialData()
         self.plot_data = m.PlotData()
+        self.plot_data.setup(
+            data_structure=[float,float,float,float,float,float], 
+            data_labels=['ax', 'ay', 'az', 'gx', 'gy', 'gz'], 
+            buffer_size=10)
+
+        self.serial_data.on_data.connect(self.on_new_data)
 
         # Settings Popup
         self.port_settings_popup = v.PortSetupPopup(self.serial_data)
@@ -53,11 +59,13 @@ class App(QMainWindow):
 
         # TABS
         consoleTab = v.ConsolePrintTab(self.serial_data, self.plot_data)
+        linePlotTab = v.LinePlotTab(self.plot_data)
 
         # TAB MENU
         tab = QTabWidget()
         self.setCentralWidget(tab)
         tab.addTab(consoleTab, 'Console')
+        tab.addTab(linePlotTab, 'Line Plot')
 
         self.setGeometry(200, 200, 1200, 800)
         self.setWindowTitle('Custom Serial Plotter')
@@ -87,6 +95,12 @@ class App(QMainWindow):
 
     def open_plot_settings(self):
         self.plot_settings_popup.popup()
+
+    def on_new_data(self, data):
+        try:
+            self.plot_data.push(data)
+        except Exception as e:
+            pass
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.serial_data.close()

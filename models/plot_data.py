@@ -1,6 +1,9 @@
 import struct
 from collections import deque
 from PyQt5.QtCore import QObject, pyqtSignal
+import time
+
+import numpy as np
 
 # Define a mapping from Python types to struct format codes
 type_to_format = {
@@ -13,6 +16,7 @@ class PlotData(QObject):
     def __init__(self):
         super().__init__()
         self.buffer = None
+        self.time_buffer = None
         self.buffer_size = 0
         self.info = []
         self.data_structure = []
@@ -21,6 +25,7 @@ class PlotData(QObject):
     def setup(self, data_structure=[], data_labels=[], buffer_size=0):
         self.buffer_size = buffer_size
         self.buffer = deque(maxlen=buffer_size)
+        self.time_buffer = np.arange(-buffer_size + 1, 1)
 
         # Initialize the data structure
         self.info = []
@@ -51,17 +56,18 @@ class PlotData(QObject):
         return packet
 
     def push(self, data):
-        packet = self.decode_data(data)
+        packet = self.decode(data)
         self.buffer.append(packet)
+        if len(self.buffer) > len(self.time_buffer):
+            self.time_buffer = np.arange(-len(self.buffer) + 1, 1)
 
     def get(self):
         # Return the data as a list of lists
-        return list(zip(*self.buffer))
+        if self.buffer is None or len(self.buffer) == 0:
+            return [[] for _ in range(len(self.info))], []
+        
+        # Make the time relative to the current time
+        current_time = self.time_buffer[-1]
+        relative_time = [t - current_time for t in self.time_buffer]
 
-# Create a PlotData object
-plot_data = PlotData()
-
-# Set up the PlotData object with a packet structure and a buffer size of 100
-data_structure = [float, float, float]
-data_labels = ['ax', 'ay', 'az']
-plot_data.setup(data_structure, data_labels, 100)
+        return list(zip(*self.buffer)), relative_time
