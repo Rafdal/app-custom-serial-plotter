@@ -2,23 +2,32 @@ import sys
 from PyQt5.QtGui import QCloseEvent
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMenu, QMenuBar, QAction, QTabWidget, QToolBar, QComboBox, QPushButton, QLabel
 
+from PyQt5.QtCore import QTimer
+
 import models as m
 import views as v
 import controllers as c
+
+import cProfile
 
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
         self.initUI()
 
+        # Set up a timer to update the plots every 100 ms (10 Hz)
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_all_tabs)
+        self.timer.start(20)
+
     def initUI(self):
         # set models
         self.serial_data = m.SerialData()
         self.plot_data = m.PlotData()
         self.plot_data.setup(
-            data_structure=[float,float,float,float,float,float], 
+            data_structure=[float, float, float, float, float, float], 
             data_labels=['ax', 'ay', 'az', 'gx', 'gy', 'gz'], 
-            buffer_size=50)
+            buffer_size=500)
 
         self.serial_data.on_data.connect(self.on_new_data)
 
@@ -59,13 +68,14 @@ class App(QMainWindow):
 
         # TABS
         consoleTab = v.ConsolePrintTab(self.serial_data, self.plot_data)
-        linePlotTab = v.LinePlotTab(self.plot_data)
+        self.linePlotTab = v.LinePlotTab()
+        self.linePlotTab.create_subplots(self.plot_data)
 
         # TAB MENU
         tab = QTabWidget()
         self.setCentralWidget(tab)
         tab.addTab(consoleTab, 'Console')
-        tab.addTab(linePlotTab, 'Line Plot')
+        tab.addTab(self.linePlotTab, 'Line Plot')
 
         self.setGeometry(200, 200, 1200, 800)
         self.setWindowTitle('Custom Serial Plotter')
@@ -97,10 +107,19 @@ class App(QMainWindow):
         self.plot_settings_popup.popup()
 
     def on_new_data(self, data):
-        try:
-            self.plot_data.push(data)
-        except Exception as e:
-            pass
+        self.plot_data.push(data)
+    
+    def update_all_tabs(self):
+        plotData = self.plot_data.get()
+        if plotData is not None:
+            buffer, time = plotData
+            # print("buffer:", buffer)
+            # print("time", time)
+            self.linePlotTab.update_plot(buffer, time, self.plot_data)
+
+        # Call the update method on each tab
+        # self.consoleTab.update_plot()
+        pass
 
     def closeEvent(self, a0: QCloseEvent | None) -> None:
         self.serial_data.close()
@@ -108,6 +127,9 @@ class App(QMainWindow):
         return super().closeEvent(a0)
 
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = App()
-    sys.exit(app.exec_())
+    def main():
+        app = QApplication(sys.argv)
+        ex = App()
+        sys.exit(app.exec_())
+    main()
+    # cProfile.run('main()', sort='cumtime')

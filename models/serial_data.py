@@ -43,15 +43,23 @@ class SerialData(QObject):
     @pyqtSlot()
     def read_data(self):
         while True:
-            if self.port_is_open and self.ser.in_waiting:
-                data = self.ser.read(self.ser.in_waiting)  # Read all available bytes
-                self.buffer.extend(data)  # Add the data to the buffer
+            try:
+                if self.port_is_open and self.ser.in_waiting:
+                    data = self.ser.read(self.ser.in_waiting)  # Read all available bytes
+                    self.buffer.extend(data)  # Add the data to the buffer
 
-                # Process the buffer in packets
-                while self.settings['header'] in self.buffer:
-                    index = self.buffer.index(self.settings['header'])
-                    packet = bytes(self.buffer[:index])  # Convert bytearray to bytes
-                    self.buffer = self.buffer[index+len(self.settings['header']):]  # Adjust for the length of the header
+                    # Process the buffer in packets
+                    while self.settings['header'] in self.buffer:
+                        index = self.buffer.index(self.settings['header'])
+                        packet = bytes(self.buffer[:index])  # Convert bytearray to bytes
+                        self.buffer = self.buffer[index+len(self.settings['header']):]  # Adjust for the length of the header
 
-                    if packet:  # Ignore empty packets
-                        self.on_data.emit(packet)
+                        if packet:  # Ignore empty packets
+                            self.on_data.emit(packet)
+            except serial.SerialException as e:
+                print(e)
+                self.ser.reset_input_buffer()
+                self.ser.reset_output_buffer()
+                self.port_is_open = False
+                self.ser.close()
+                self.ser = serial.Serial()

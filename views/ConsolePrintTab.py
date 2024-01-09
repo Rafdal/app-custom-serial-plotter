@@ -99,12 +99,11 @@ class ConsolePrintTab(QWidget):
         elif self.format_dropdown.currentText() == "uint8_t":
             data_str = ", ".join([str(x) for x in data])
         elif self.format_dropdown.currentText() == "Defined Variables":
-            try:
-                data_list = self.plot_data.decode(data)
-            except Exception as e:
-                data_str = str(e)
-            else:
-                data_str = ", ".join([str(x) for x in data_list])
+
+            data_list = self.plot_data.decode(data)
+            if data_list is None:
+                data_str = "Expected {} bytes, got {} bytes".format(self.plot_data.expected_byte_count, len(data))
+            data_str = ", ".join([str(x) for x in data_list])
         else:
             data_str = "Invalid Format"
 
