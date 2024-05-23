@@ -2,11 +2,9 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from matplotlib.ticker import FuncFormatter
-from matplotlib import rcParams
 import numpy as np
 from PyQt5.QtCore import Qt
 import math
-from decimal import Decimal
 
 class PlotBase(QWidget):
     def __init__(self, draggable=True, scaleX='linear', postFix=None, yInitRange=20.0, xlabel=None, plotLabels=[]):
