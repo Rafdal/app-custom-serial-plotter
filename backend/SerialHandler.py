@@ -12,6 +12,7 @@ class SerialSettings:
     header: bytes = b""
     expected_size: int = 0
 
+
 class SerialBuffer:
     def __init__(self, max_size=16 * 1024):
         self.max_size = max_size
@@ -163,7 +164,6 @@ class SerialPortThread(QThread):
 
 
 
-
 class SerialPortScannerThread(QThread):
     portScanned = pyqtSignal(dict)
 
@@ -189,6 +189,8 @@ class SerialPortScannerThread(QThread):
         return available_ports
 
 
+
+
 class SerialPortsHandler(QObject):
 
     portScanned = pyqtSignal(dict)
@@ -209,8 +211,11 @@ class SerialPortsHandler(QObject):
         ports = self.portScannerThread.scan_ports()
         self._handle_scanned_ports(ports)
 
+    def active_ports(self) -> typing.Dict[str, SerialPortThread]:
+        """ Returns a dicts of active ports"""
+        return self.port_threads
 
-    def port_list(self):
+    def port_list(self) -> dict:
         """ Returns a dictionary of available ports with their information.
         
         Main dict:

@@ -6,7 +6,7 @@ from PyQt5.QtCore import Qt
 
 
 class CardWidget(QWidget):
-    def __init__(self, child=None, icon=QStyle.SP_DriveCDIcon, title="Card", subtitle="subt", width=None, height=None, iconSize=64):
+    def __init__(self, child=None, icon=QStyle.StandardPixmap.SP_DriveNetIcon, title="Card", subtitle="subt", width=None, height=None, iconSize=64):
         super(CardWidget, self).__init__()
         
         # Container widget
