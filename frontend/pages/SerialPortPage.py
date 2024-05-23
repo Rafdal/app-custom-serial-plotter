@@ -13,6 +13,8 @@ class SerialPortPage(BaseClassPage):
 
         self.portMenu = DropDownMenu('Port', onChoose=self.on_port_selected)
 
+        self.model.serial.portScanned.connect(self.portMenu.set_options)
+
         scanButton = Button('Scan')
         scanButton.clicked.connect(self.on_tab_focus)
         

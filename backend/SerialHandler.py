@@ -12,14 +12,69 @@ class SerialSettings:
     header: bytes = b""
     expected_size: int = 0
 
+class SerialBuffer:
+    def __init__(self, max_size=16 * 1024):
+        self.max_size = max_size
+        self.buffer = bytearray()
+
+    def push(self, data: bytes) -> None:
+        """ Add data to the buffer """
+        self.buffer.extend(data)
+        if len(self.buffer) > self.max_size:
+            self.buffer = self.buffer[-self.max_size:]
+
+    def pop_all(self) -> bytearray:
+        """ Pop all data from the buffer """
+        data = bytearray(self.buffer)
+        self.buffer.clear()
+        return data
+
+    def pop_bytes(self, size: int) -> bytearray:
+        """ Pop a specific amount of bytes from the buffer """
+        if len(self.buffer) >= size:
+            data = bytearray(self.buffer[:size])
+            self.buffer = self.buffer[size:]
+            return data
+        else:
+            raise ValueError("The buffer does not contain enough data to pop the specified size")
+    
+    def pop_from(self, header: bytes, size: int = 0) -> bytearray:
+        """ Pop data from the buffer starting from a specific header 
+
+        Args:
+        - header: bytes
+        - size: int (optional)
+        """
+        if header not in self.buffer:
+            raise ValueError("The buffer does not contain the specified header")
+        index = self.buffer.index(self.settings.header)
+        if size > 0:
+            if len(self.buffer) >= index + size:
+                output = bytearray(self.buffer[:index])
+                self.buffer = self.buffer[index + size:]  # Adjust for the length of the header
+                return output
+            else:
+                raise ValueError("The buffer does not contain enough data to pop the specified size")
+        else:
+            output = bytes(self.buffer[:index])
+            self.buffer = self.buffer[index + len(self.settings.header):]
+            return output
+            
+    def count(self, item: bytes) -> int:
+        """ Count the number of occurrences of an item in the buffer """
+        return self.buffer.count(item)
+
+    def __contains__(self, item):
+        return item in self.buffer
+
+
 
 class SerialPortThread(QThread):
     portClosed = pyqtSignal()
     errorOcurred = pyqtSignal(str)
     dataReceived = pyqtSignal(bytes)
     emittingData = True
-    buffer = bytearray()
-
+    buffer = SerialBuffer()
 
     def __init__(self, port, baudrate, header=b"", expected_size=0):
         self.settings = SerialSettings(baudrate=baudrate, port=port, header=header, expected_size=expected_size)
@@ -33,38 +88,34 @@ class SerialPortThread(QThread):
     def run(self):
         while True:
             if self.ser.bytesAvailable():
-                data = self.ser.readAll()  # Read all available bytes
-                self.buffer.extend(data)  # Add the data to the buffer
+                data = self.ser.readAll().data()    # Read all available bytes
 
-                # Process the buffer in packets
+                self.buffer.push(data)              # Add the data to the buffer
+
+                # Process the buffer in packets (if a header is set)
                 if len(self.settings.header) > 0:
-                    while self.settings.header in self.buffer:
-                        try:
-                            index = self.buffer.index(self.settings.header)
+                    if self.settings.header in self.buffer:
+                        while self.buffer.count(self.settings.header) > 1:
 
-                            psize = self.settings.expected_size
-                            if psize > 0:
-                                if len(self.buffer) >= index + psize:
-                                    packet = bytes(self.buffer[:index])
-                                    self.buffer = self.buffer[index + psize:]  # Adjust for the length of the header
-                            else:
-                                packet = bytes(self.buffer[:index])
-                                self.buffer = self.buffer[index + len(self.settings.header):]
+                            try:
+                                psize = self.settings.expected_size
+                                packet = self.buffer.pop_from(self.settings.header, psize)
 
-                            if self.emittingData and packet:  # Ignore empty packets
-                                self.dataReceived.emit(packet)
-                        except ValueError as e:
-                            print(e)
-                            self.close()
-                            return
-                        except Exception as e:
-                            print(e)
-                            self.errorOcurred.emit(str(e))
-                            self.close()
-                            return
+                                if self.emittingData and packet:  # Ignore empty packets
+                                    self.dataReceived.emit(packet)
+                            except ValueError as e:
+                                self.errorOcurred.emit(str(e))
+                                print(e)
+                                self.close()
+                                return
+                            except Exception as e:
+                                self.errorOcurred.emit(str(e))
+                                print(e)
+                                self.close()
+                                return
                 else:
                     if self.emittingData:
-                        self.dataReceived.emit(bytes(self.buffer))
+                        self.dataReceived.emit(self.buffer.pop_all())
                     self.buffer.clear()
 
 
