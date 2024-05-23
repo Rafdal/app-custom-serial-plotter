@@ -1,7 +1,8 @@
-from PyQt5.QtCore import QObject, pyqtSignal, QThread, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
 from dataclasses import dataclass
+import typing
 
 @dataclass
 class SerialSettings:
@@ -110,55 +111,94 @@ class SerialPortThread(QThread):
 
 
 
+
+
+class SerialPortScannerThread(QThread):
+    portScanned = pyqtSignal(dict)
+
+    def run(self):
+        while True:
+            available_ports = self.scan_ports()
+            self.portScanned.emit(available_ports)
+            self.sleep(1)  # sleep for 1 second
+
+    def scan_ports(self):
+        available_ports = {}
+        for port in QSerialPortInfo.availablePorts():
+            port_info = {}
+            port_info['description'] = port.description()
+            port_info['manufacturer'] = port.manufacturer()
+            port_info['serial_number'] = port.serialNumber()
+            port_info['product_id'] = port.productIdentifier() if port.hasProductIdentifier() else None
+            port_info['vendor_id'] = port.vendorIdentifier() if port.hasVendorIdentifier() else None
+            port_info['busy'] = port.isBusy()
+            port_info['baudrates'] = [int(baudrate) for baudrate in port.standardBaudRates()]
+
+            available_ports[port.portName()] = port_info
+        return available_ports
+
+
 class SerialPortsHandler(QObject):
+
+    portScanned = pyqtSignal(dict)
+
     def __init__(self):
         super().__init__()
 
         self.available_ports = {}
         self.port_threads = {}
 
-        self.portStatusCheck = QTimer()
-        self.portStatusCheck.timeout.connect(self.scan_interval)
-        self.portStatusCheck.start(1000)
+        self.portScannerThread = SerialPortScannerThread()
+        self.portScannerThread.portScanned.connect(self._handle_scanned_ports)
+        self.portScannerThread.portScanned.connect(self.portScanned)
+        self.portScannerThread.start()
 
 
+    def scan_ports(self):
+        ports = self.portScannerThread.scan_ports()
+        self._handle_scanned_ports(ports)
+
+
+    def port_list(self):
+        """ Returns a dictionary of available ports with their information.
+        
+        Main dict:
+        - key = port name
+        - value = dict with port info
+        
+        Port info dict:
+        - "description" = str
+        - "manufacturer" = str
+        - "serial_number" = str
+        - "product_id" = int or None
+        - "vendor_id" = int or None
+        - "busy" = bool
+        - "baudrates" = list of int
+        """
+        return self.available_ports
+
+    def _handle_scanned_ports(self, available_ports):
+        self.available_ports = available_ports
+        for port in list(self.port_threads.keys()):  # create a copy of keys for iteration
+            if port not in self.available_ports:
+                self.port_threads[port].close()
+                self.port_threads.pop()
+                del self.port_threads[port]
 
     def open_port(self, port, baudrate, header=b"", expected_size=0) -> SerialPortThread:
+        if port in self.port_threads:
+            thread = self.port_threads[port]
+            thread.connect()
+            return thread
+        
         thread = SerialPortThread(port, baudrate, header, expected_size)
         thread.start()
         self.port_threads[port] = thread
         return thread
-    
-    
+
     def close_port(self, name):
-        for thread in self.port_threads:
-            if thread.port == name:
-                thread.close()
-                self.port_threads.remove(thread)
-                return True
+        if name in self.port_threads:
+            self.port_threads[name].close()
+            self.port_threads.pop(name)
+            return True
         return False
-
-
-    def port_list(self):
-        for port in QSerialPortInfo.availablePorts():
-            port_info = {}
-            port_info['description'] = port.description()
-            port_info['manufacturer'] = port.manufacturer()
-            port_info['serial_number'] = port.serialNumber()
-            # port_info
-            port_info['product_id'] = port.productIdentifier() if port.hasProductIdentifier() else None
-            port_info['vendor_id'] = port.vendorIdentifier() if port.hasVendorIdentifier() else None
-            port_info['busy'] = port.isBusy()
-            port_info['baudrates'] = [int(baudrate) for baudrate in port.standardBaudRates()]
-
-            self.available_ports[port.portName()] = port_info
-        return self.available_ports
-
-
-
-    def scan_interval(self):
-        self.port_list()
-        for port in self.port_threads.keys():
-            if port not in self.available_ports:
-                self.port_threads[port].close()
-                self.port_threads.pop(port)

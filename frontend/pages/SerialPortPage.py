@@ -1,9 +1,8 @@
-from PyQt5.QtWidgets import QToolBar, QComboBox, QPushButton, QLabel
+from PyQt5.QtWidgets import QToolBar, QComboBox, QPushButton, QLabel, QHBoxLayout, QVBoxLayout
 
 
 from frontend.pages.BaseClassPage import BaseClassPage
-from backend.serial_data import SerialData
-
+from frontend.widgets.BasicWidgets import DropDownMenu, Button
 
 class SerialPortPage(BaseClassPage):
 
@@ -12,74 +11,55 @@ class SerialPortPage(BaseClassPage):
     def initUI(self, layout):
         pass
 
+        self.portMenu = DropDownMenu('Port', onChoose=self.on_port_selected)
 
-        self.serial_data = SerialData()
-
-        self.serial_data.on_data.connect(self.on_new_data)
-
-        self.port_settings_popup = v.PortSetupPopup(self.serial_data)
-
-        consoleTab = v.ConsolePrintTab(self.serial_data, self.plot_data)
-
-        # TOOL BAR
-        toolbar = QToolBar()
-        self.addToolBar(toolbar)
-        self.port_selector = QComboBox()
+        scanButton = Button('Scan')
+        scanButton.clicked.connect(self.on_tab_focus)
         
-        self.scan_button = QPushButton('Scan')
-        self.scan_button.clicked.connect(self.scan_ports)
+        openButton = Button('Open')
+        openButton.clicked.connect(self.open_port)
         
-        self.open_button = QPushButton('Open')
-        self.open_button.clicked.connect(self.open_port)
+        closeButton = Button('Close')
+        closeButton.clicked.connect(self.close_port)
         
-        self.close_button = QPushButton('Close')
-        self.close_button.clicked.connect(self.close_port)
-        
-        self.settings_button = QPushButton('Settings')
-        self.settings_button.clicked.connect(self.open_port_settings)
+        # settingsButton = QPushButton('Settings')
+        # settingsButton.clicked.connect(self.open_port_settings)
 
-        self.variables_button = QPushButton('Variables')
-        self.variables_button.clicked.connect(self.open_plot_settings)
+        # self.variables_button = QPushButton('Variables')
+        # self.variables_button.clicked.connect(self.open_plot_settings)
 
-        self.connection_status = QLabel('Not Connected')
-        toolbar.addWidget(self.scan_button)
-        toolbar.addWidget(self.port_selector)
-        toolbar.addWidget(self.open_button)
-        toolbar.addWidget(self.close_button)
-        toolbar.addSeparator()
-        toolbar.addWidget(self.settings_button)
-        toolbar.addWidget(self.variables_button)
-        toolbar.addSeparator()
-        toolbar.addWidget(self.connection_status)
+        self.connectionStatus = QLabel('Not Connected')
 
+        hlayout = QHBoxLayout()
 
+        hlayout.addWidget(scanButton)
+        hlayout.addSpacing(20)
+        hlayout.addWidget(self.portMenu)
+        hlayout.addWidget(openButton)
+        hlayout.addWidget(closeButton)
+        hlayout.addSpacing(20)
+        # hlayout.addWidget(settingsButton)
+        hlayout.addSpacing(20)
+        hlayout.addWidget(self.connectionStatus)
 
+        layout.addLayout(hlayout)
 
-    def scan_ports(self):
-        self.port_selector.clear()
-        ports = self.serial_data.port_list()
-        self.port_selector.addItems(ports)
 
     def open_port(self):
-        try:
-            self.serial_data.port = self.port_selector.currentText()
-            self.serial_data.open()
-            self.connection_status.setText('Connected')
-        except Exception as e:
-            self.connection_status.setText('Failed to Connect')
-            
-            print(e)
+        selected_port = self.portMenu.selected  # dict
+        print(selected_port)
 
     def close_port(self):
-        self.serial_data.close()
-        self.connection_status.setText('Not Connected')
+        pass
 
-    def open_port_settings(self):
-        self.port_settings_popup.popup()
+    # def open_port_settings(self):
+    #     self.port_settings_popup.popup()
 
-
-
-
+    def on_port_selected(self, name: str, info: dict):
+        print(name, info)
 
     def on_tab_focus(self):
-        pass
+        print("on_tab_focus")
+        self.model.serial.scan_ports()
+        port_list = self.model.serial.port_list()
+        self.portMenu.set_options(port_list)
