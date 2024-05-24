@@ -14,9 +14,12 @@ class SerialSettings:
 
 
 class SerialBuffer:
-    def __init__(self, max_size=16 * 1024):
+    def __init__(self, max_size=1024):
         self.max_size = max_size
         self.buffer = bytearray()
+
+    def clear(self):
+        self.buffer.clear()
 
     def push(self, data: bytes) -> None:
         """ Add data to the buffer """
@@ -68,86 +71,43 @@ class SerialBuffer:
     def __contains__(self, item):
         return item in self.buffer
 
+    def __len__(self):
+        return len(self.buffer)
+
 
 
 class SerialPortThread(QThread):
     portClosed = pyqtSignal()
     errorOcurred = pyqtSignal(str)
-    dataReceived = pyqtSignal(bytes)
-    emittingData = True
+    dataReceived = pyqtSignal(bytearray)
+    emittingDataFlag = True
     buffer = SerialBuffer()
 
     def __init__(self, port, baudrate, header=b"", expected_size=0):
+        super().__init__()
+        self.ser = None
         self.settings = SerialSettings(baudrate=baudrate, port=port, header=header, expected_size=expected_size)
         self.connect()
-        super().__init__()
+        self.setStackSize(1024 * 1024)
         
-    @property
-    def port(self):
-        return self.settings.port
-
-    def run(self):
-        while True:
-            if self.ser.bytesAvailable():
-                data = self.ser.readAll().data()    # Read all available bytes
-
-                self.buffer.push(data)              # Add the data to the buffer
-
-                # Process the buffer in packets (if a header is set)
-                if len(self.settings.header) > 0:
-                    if self.settings.header in self.buffer:
-                        while self.buffer.count(self.settings.header) > 1:
-
-                            try:
-                                psize = self.settings.expected_size
-                                packet = self.buffer.pop_from(self.settings.header, psize)
-
-                                if self.emittingData and packet:  # Ignore empty packets
-                                    self.dataReceived.emit(packet)
-                            except ValueError as e:
-                                self.errorOcurred.emit(str(e))
-                                print(e)
-                                self.close()
-                                return
-                            except Exception as e:
-                                self.errorOcurred.emit(str(e))
-                                print(e)
-                                self.close()
-                                return
-                else:
-                    if self.emittingData:
-                        self.dataReceived.emit(self.buffer.pop_all())
-                    self.buffer.clear()
-
-
-    def connect(self):
-        try:
-            if self.ser is not None:          # Port exists
-                if self.ser.isOpen():
-                    self.ser.close()
-                    self.wait(2)
-                self.ser.setPortName(self.settings.port)
-                self.ser.setBaudRate(self.settings.baudrate)
-                self.ser.open(QSerialPort.OpenModeFlag.ReadWrite)
-
-            else:
-                self.ser = QSerialPort()
-                self.ser.errorOccurred.connect(self.errorOcurred)
-                self.ser.error.connect(self.errorOcurred)
-                self.ser.setPortName(self.settings.port)
-                self.ser.setBaudRate(self.settings.baudrate)
-                self.ser.open(QSerialPort.OpenModeFlag.ReadWrite)
-        except Exception as e:
-            self.errorOcurred.emit(str(e))
-            print(e)
-            self.close()
+    def _error_handler(self, error):
+        if error == QSerialPort.SerialPortError.NoError:
+            return
+        if error == QSerialPort.SerialPortError.DeviceNotFoundError:
+            self.errorOcurred.emit(f"Device {self.settings.port} not found")
+        elif error == QSerialPort.SerialPortError.PermissionError:
+            self.errorOcurred.emit(f"Permission error on {self.settings.port}")
+        elif error == QSerialPort.SerialPortError.OpenError:
+            self.errorOcurred.emit(f"Error opening {self.settings.port}")
+        else:
+            self.errorOcurred.emit(f"Error {str(error)} on {self.settings.port}")
 
 
     def pause(self):
-        self.emittingData = False
+        self.emittingDataFlag = False
 
     def resume(self):
-        self.emittingData = True
+        self.emittingDataFlag = True
 
     def send(self, data):
         self.ser.write(data)
@@ -162,30 +122,121 @@ class SerialPortThread(QThread):
         self.terminate()
 
 
-
-
-class SerialPortScannerThread(QThread):
-    portScanned = pyqtSignal(dict)
+    @property
+    def port(self):
+        return self.settings.port
 
     def run(self):
         while True:
-            available_ports = self.scan_ports()
-            self.portScanned.emit(available_ports)
-            self.sleep(1)  # sleep for 1 second
+            try:
+                if self.ser.isOpen() and self.ser.isReadable() and self.ser.bytesAvailable():
+                    print("read")
+                    # data = self.ser.readAll()    # Read all available bytes
+
+                    data = self.ser.readData()
+
+                    if len(data) > 0:
+                        try:
+                            self.buffer.push(data)              # Add the data to the buffer
+                        except Exception as e:
+                            self.errorOcurred.emit(str(e))
+                            print(e)
+                            self.close()
+                            return
+                    else:
+                        continue
+
+                    # Process the buffer in packets (if a header is set)
+                    if len(self.settings.header) > 0:
+                        if self.settings.header in self.buffer:
+                            while self.buffer.count(self.settings.header) > 1:
+
+                                try:
+                                    psize = self.settings.expected_size
+                                    packet = self.buffer.pop_from(self.settings.header, psize)
+
+                                    if self.emittingDataFlag and packet:  # Ignore empty packets
+                                        self.dataReceived.emit(packet)
+                                except ValueError as e:
+                                    self.errorOcurred.emit(str(e))
+                                    print(e)
+                                    self.close()
+                                    return
+                                except Exception as e:
+                                    self.errorOcurred.emit(str(e))
+                                    print(e)
+                                    self.close()
+                                    return
+                    else:
+                        try:
+                            if self.emittingDataFlag and len(self.buffer) > 0:
+                                data = self.buffer.pop_all()
+                                print(f"Data received: {data}\n")
+                                self.dataReceived.emit(data)
+                            self.buffer.clear()
+                        except Exception as e:
+                            self.errorOcurred.emit(str(e))
+                            print(e)
+                            self.close()
+                            return
+            except Exception as e:
+                print(e)
+                self.errorOcurred.emit(str(e))
+                self.close()
+                return
+
+    def connect(self):
+        try:
+            if self.ser is not None:          # Port exists
+                if self.ser.isOpen():
+                    self.ser.close()
+                    self.wait(2)
+                self.ser.setPortName(self.settings.port)
+                self.ser.setBaudRate(self.settings.baudrate)
+                self.ser.open(QSerialPort.OpenModeFlag.ReadWrite)
+
+            else:
+                self.ser = QSerialPort()
+                self.ser.errorOccurred.connect(self._error_handler)
+                self.ser.error.connect(self._error_handler)
+                self.ser.setPortName(self.settings.port)
+                self.ser.setBaudRate(self.settings.baudrate)
+                self.ser.setReadBufferSize(1024)
+                self.ser.open(QSerialPort.OpenModeFlag.ReadWrite)
+        except Exception as e:
+            self.errorOcurred.emit(str(e))
+            print(e)
+            self.close()
+
+
+
+class SerialPortScannerThread(QObject):
+    portScanned = pyqtSignal(dict)
+
+    # def run(self):
+    #     while True:
+    #         print("SerialPortScannerThread::run()")
+    #         available_ports = self.scan_ports()
+    #         self.portScanned.emit(available_ports)
+    #         self.sleep(10)  # sleep for 1 second
 
     def scan_ports(self):
         available_ports = {}
         for port in QSerialPortInfo.availablePorts():
-            port_info = {}
-            port_info['description'] = port.description()
-            port_info['manufacturer'] = port.manufacturer()
-            port_info['serial_number'] = port.serialNumber()
-            port_info['product_id'] = port.productIdentifier() if port.hasProductIdentifier() else None
-            port_info['vendor_id'] = port.vendorIdentifier() if port.hasVendorIdentifier() else None
-            port_info['busy'] = port.isBusy()
-            port_info['baudrates'] = [int(baudrate) for baudrate in port.standardBaudRates()]
+            try:
+                for port in QSerialPortInfo.availablePorts():
+                    port_info = {}
+                    port_info['description'] = port.description()
+                    port_info['manufacturer'] = port.manufacturer()
+                    port_info['serial_number'] = port.serialNumber()
+                    port_info['product_id'] = port.productIdentifier() if port.hasProductIdentifier() else None
+                    port_info['vendor_id'] = port.vendorIdentifier() if port.hasVendorIdentifier() else None
+                    port_info['busy'] = port.isBusy()
+                    port_info['baudrates'] = [int(baudrate) for baudrate in port.standardBaudRates()]
 
-            available_ports[port.portName()] = port_info
+                    available_ports[port.portName()] = port_info
+            except Exception as e:
+                print(f"Error scanning port: {e}")
         return available_ports
 
 
@@ -204,7 +255,7 @@ class SerialPortsHandler(QObject):
         self.portScannerThread = SerialPortScannerThread()
         self.portScannerThread.portScanned.connect(self._handle_scanned_ports)
         self.portScannerThread.portScanned.connect(self.portScanned)
-        self.portScannerThread.start()
+        # self.portScannerThread.start()
 
 
     def scan_ports(self):

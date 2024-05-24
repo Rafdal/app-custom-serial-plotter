@@ -13,8 +13,8 @@ class SerialPortPage(BaseClassPage):
 
         self.initTopLayout(layout)
 
-        self.cardList = CardListWidget()
-        layout.addWidget(self.cardList)
+        # self.cardList = CardListWidget()
+        # layout.addWidget(self.cardList)
 
         self.active_ports = self.model.serial.active_ports()
         self.model.serial.portScanned.connect(self.on_port_scanned)
@@ -43,16 +43,17 @@ class SerialPortPage(BaseClassPage):
         self.portMenu.set_options(ports)
         if self.model.serial.active_ports() != self.active_ports:
             self.active_ports = self.model.serial.active_ports()
-            self.cardList.clear()
+            # self.cardList.clear()
             for port in self.active_ports:
                 card = CardWidget(title=port, subtitle="Serial Port")
-                self.cardList.addWidget(card)
+                # self.cardList.addWidget(card)
 
 
     def open_port(self):
         selected_port_name = self.portMenu.selected_title  # dict
         print(f"{selected_port_name} selected\n\tDATA: {self.portMenu.selected}")
-        self.model.serial.open_port(selected_port_name, baudrate=115200)
+        thread = self.model.serial.open_port(selected_port_name, baudrate=115200)
+        # thread.dataReceived.connect(lambda data: print(f"Data received: {data}\n"))
 
     def on_port_selected(self, name: str, info: dict):
         print(name, info)
