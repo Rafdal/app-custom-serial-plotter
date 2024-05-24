@@ -1,16 +1,17 @@
 # CardWidget, CardListWidget
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGraphicsDropShadowEffect, QStyle, QHBoxLayout, QToolButton, QScrollArea, QFrame
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QGraphicsDropShadowEffect, QStyle, QHBoxLayout, QToolButton, QScrollArea, QFrame, QSizePolicy
 from PyQt5.QtGui import QPixmap, QFont, QColor
 from PyQt5.QtCore import Qt
 
 
 class CardWidget(QWidget):
-    def __init__(self, child=None, icon=QStyle.StandardPixmap.SP_DriveNetIcon, title="Card", subtitle="subt", width=None, height=None, iconSize=64):
+    def __init__(self, child=None, tail=None, icon=QStyle.StandardPixmap.SP_DriveNetIcon, title="Card", subtitle="subt", width=None, height=None, iconSize=64):
         super(CardWidget, self).__init__()
         
         # Container widget
         self.container = QWidget()
+        self.container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.containerLayout = QHBoxLayout()
         self.containerLayout.setContentsMargins(10, 10, 10, 10)
         self.containerLayout.setSpacing(10)
@@ -27,13 +28,13 @@ class CardWidget(QWidget):
         
         # Use a standard icon
         iconLabel = QLabel()
-        icon = self.style().standardIcon(icon)
-        pixmap = icon.pixmap(iconSize, iconSize)
+        if isinstance(icon, str):
+            pixmap = QPixmap(icon).scaled(iconSize, iconSize, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        else:
+            icon = self.style().standardIcon(icon)
+            pixmap = icon.pixmap(iconSize, iconSize)
         iconLabel.setPixmap(pixmap)
         iconLabel.setAlignment(Qt.AlignCenter)
-        iconLayout = QHBoxLayout()
-        iconLayout.setAlignment(Qt.AlignTop | Qt.AlignLeft)
-        iconLayout.addWidget(iconLabel)
         
         # Main Title
         titleLabel = QLabel(title)
@@ -48,8 +49,8 @@ class CardWidget(QWidget):
         # Add widgets to container layout
         titlesLayout.addWidget(titleLabel)
         titlesLayout.addWidget(subtitleLabel)
-        titlesLayout.addLayout(iconLayout)
 
+        self.containerLayout.addWidget(iconLabel)
         self.containerLayout.addLayout(titlesLayout)
         if child is not None:
             if isinstance(child, QWidget):
@@ -66,7 +67,23 @@ class CardWidget(QWidget):
                 self.containerLayout.addLayout(child)
             else:
                 raise Exception("Child must be a QWidget, a list of QWidget, or a QHBoxLayout/VBoxLayout")
-        
+        self.containerLayout.addStretch(1)
+        if tail is not None:
+            if isinstance(tail, QWidget):
+                self.containerLayout.addWidget(tail)
+            elif isinstance(tail, list):
+                for c in tail:
+                    if isinstance(c, QWidget):
+                        self.containerLayout.addWidget(c)
+                    elif isinstance(c, QHBoxLayout) or isinstance(c, QVBoxLayout):
+                        self.containerLayout.addLayout(c)
+                    else:
+                        raise Exception("Tail must be a QWidget or a list of QWidget")
+            elif isinstance(tail, QHBoxLayout) or isinstance(tail, QVBoxLayout):
+                self.containerLayout.addLayout(tail)
+            else:
+                raise Exception("Tail must be a QWidget, a list of QWidget, or a QHBoxLayout/VBoxLayout")
+
         # Main layout for the widget
         self.mainLayout = QVBoxLayout()
         self.mainLayout.addWidget(self.container)

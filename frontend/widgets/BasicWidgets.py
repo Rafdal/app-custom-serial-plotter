@@ -9,10 +9,14 @@ class Button(QPushButton):
     def __init__(self, text="Click Me", color="black", background_color = "white", 
                         radius=10,
                         shadow_color="grey", shadow_radius=9, hover_color="lightblue", 
-                        click_color="grey", padding=6, on_click=None):
+                        click_color="grey", padding=6, on_click=None, text_size=14, sizePolicy=None):
         super().__init__(text)
         self.radius = radius
         self.padding = padding
+        self.text_size = text_size
+
+        if sizePolicy:
+            self.setSizePolicy(*sizePolicy)
 
         self.setColors(color, background_color, hover_color, click_color)
 
@@ -32,6 +36,7 @@ class Button(QPushButton):
         self.setStyleSheet(f"""
             QPushButton {{ 
                 color: {color};
+                font-size: {self.text_size}px;
                 background-color: {background_color};
                 border-radius: {self.radius}px;                
                 padding: {self.padding}px;
