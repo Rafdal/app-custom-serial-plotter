@@ -8,7 +8,7 @@ import models as m
 import views as v
 import controllers as c
 
-from backend.SerialHandler import SerialPortsHandler, SerialPortThread, SerialSettings
+from backend.serial.Handler import SerialPortsHandler, SerialPortThread, SerialSettings
 
 import cProfile
 

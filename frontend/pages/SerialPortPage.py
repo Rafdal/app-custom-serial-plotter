@@ -8,9 +8,12 @@ from frontend.widgets.BasicWidgets import DropDownMenu, Button
 from frontend.widgets.CardWidgets import CardWidget, CardListWidget
 
 
-from backend.SerialHandler import PortInfo, SerialPort
+from backend.serial.Handler import PortInfo, SerialPort
 
 import typing
+
+
+# [ ] (4) OpenPortDialog: Implement the class
 
 class OpenPortDialog(QDialog):
     """ Popup dialog for configuring and opening a serial port """
@@ -93,13 +96,9 @@ class SerialPortPage(BaseClassPage):
             # port.dataReceived.connect(lambda data: print(f"Data received: {data.hex(':')}\n"))
 
     def on_port_selected(self, name: str, info: PortInfo):
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Open Port")
-        dialog.setModal(True)
-        dialog.setFixedSize(QSize(200, 100))
-        layout = QVBoxLayout()
-        dialog.setLayout(layout)
-        
+
+        # [ ] (5) Implement the OpenPortDialog with a SerialSettings object as parameter
+        pass
 
 
     def on_tab_focus(self):

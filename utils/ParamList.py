@@ -57,6 +57,11 @@ class NumParam(ParameterBase):
         else:
             self.value = value
 
+    def setInterval(self, a, b):
+        if a >= b:
+            raise ValueError("Invalid interval")
+        self.interval = (a, b)
+
 class ChoiceParam(ParameterBase):
     """ Choice parameter with a list of choices"""
     def __init__(self, name: str, options: typing.List[str] = ["None"], value="None", text="choice parameter", default=None):
@@ -73,7 +78,7 @@ class ChoiceParam(ParameterBase):
 
     def setValue(self, value: str):
         if value not in self.options:
-            raise ValueError(f"Option {value} not found in the list of choices")
+            raise ValueError(f"ChoiceParam::setValue Option \'{value}\' not found in the list of choices. You have to set the options first.")
         self.value = value
 
 
@@ -105,6 +110,15 @@ class ParameterList():
             if not isinstance(p, ParameterBase):
                 raise ValueError("All parameters must be of type ParameterBase")
             self.internal_parameter_list[p.name] = p
+
+
+    def addParameter(self, param: ParameterBase):
+        if not isinstance(param, ParameterBase):
+            raise ValueError("Parameter must be of type ParameterBase")
+        if param.name in self.internal_parameter_list:
+            raise ValueError(f"Parameter {param.name} already exists")
+        self.internal_parameter_list[param.name] = param
+
 
     def __len__(self):
         return len(self.internal_parameter_list)

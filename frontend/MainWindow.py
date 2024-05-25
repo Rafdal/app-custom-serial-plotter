@@ -24,7 +24,7 @@ class MainWindow(QMainWindow):
         self.initUI(pages)
 
     def initUI(self, pages):
-        self.setWindowTitle('Sintetizador MIDI')
+        self.setWindowTitle('Multiple Serial Plotter')
         # self.setWindowIcon(QIcon('frontend/assets/icon.png'))
 
         # center window on screen

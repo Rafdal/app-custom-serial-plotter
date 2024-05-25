@@ -1,5 +1,5 @@
 
-from .SerialHandler import SerialPortsHandler
+from .serial.Handler import SerialPortsHandler
 
 class MainModel:
 
