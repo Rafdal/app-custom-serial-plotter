@@ -96,7 +96,7 @@ class DynamicSettingsWidget(QWidget):
                 settingWidget = TextInput(param.text, 
                                           on_change=lambda v, k=key: self.on_param_set(k, v),
                                           default=param.value,
-                                          regex="^$|^[a-zA-Z0-9\\*\\+\\-\\^\\/\\(\\)\\s\\.]*")
+                                          regex=param.regex)
             else:
                 raise ValueError(f"Parameter type '{param.type}' not recognized")
             

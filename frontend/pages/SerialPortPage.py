@@ -1,10 +1,26 @@
-from PyQt5.QtWidgets import QToolBar, QComboBox, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QStyle, QSizePolicy
+from PyQt5.QtWidgets import QToolBar, QComboBox, QPushButton, QLabel, QHBoxLayout, QVBoxLayout, QStyle, QSizePolicy, QDialog
 from PyQt5.QtCore import QSize
+from PyQt5.QtCore import Qt
 
 
 from frontend.pages.BaseClassPage import BaseClassPage
 from frontend.widgets.BasicWidgets import DropDownMenu, Button
 from frontend.widgets.CardWidgets import CardWidget, CardListWidget
+
+
+from backend.SerialHandler import PortInfo, SerialPort
+
+import typing
+
+class OpenPortDialog(QDialog):
+    """ Popup dialog for configuring and opening a serial port """
+    def __init__(self, portInfo, parent=None):
+        super(OpenPortDialog, self).__init__(parent)
+        self.setWindowTitle("Open Port")
+        self.setModal(True)
+        self.portInfo = portInfo
+        self.initUI()    
+
 
 class SerialPortPage(BaseClassPage):
 
@@ -24,27 +40,26 @@ class SerialPortPage(BaseClassPage):
 
         self.portMenu = DropDownMenu('Port', onChoose=self.on_port_selected)
         self.model.serial.portScanned.connect(self.on_ports_scanned)
-        
+                
         openButton = Button('Open')
         openButton.clicked.connect(self.open_port)
-                
+
         hTopLayout = QHBoxLayout()
 
         hTopLayout.addWidget(scanButton)
         hTopLayout.addSpacing(20)
         hTopLayout.addWidget(self.portMenu)
         hTopLayout.addWidget(openButton)
+        hTopLayout.addStretch(1)
         layout.addLayout(hTopLayout)
 
 
-    def on_ports_scanned(self, portListInfo: dict):
+    def on_ports_scanned(self, portListInfo: typing.Dict[str, PortInfo]):
         portsMenuDict = {}
         for item in portListInfo.items():
             k, v = item
-            manufacturer = v.get('manufacturer', '')
-            k = (k + f"  ({manufacturer})") if len(manufacturer) > 0 else k
-            description = v.get('description', '')
-            k = (k + f"  {description}") if len(description) > 0 else k
+            k = (k + f"  ({v.manufacturer})") if len(v.manufacturer) > 0 else k
+            k = (k + f"  {v.description}") if len(v.description) > 0 else k
             portsMenuDict[k] = v
 
         self.portMenu.set_options(portsMenuDict)
@@ -55,7 +70,7 @@ class SerialPortPage(BaseClassPage):
             if len(title) == 0:
                 title = port
 
-            child = QLabel(f"B/s: {portListInfo[port].get('B/s', 0)}\n")
+            child = QLabel(f"B/s: {portListInfo[port].bytesPerSecond}\n")
 
             btnSizePolicy = (QSizePolicy.Expanding, QSizePolicy.Expanding)
             closeBtn = Button('Close', background_color='red', color='white', hover_color='lightcoral',     
@@ -69,7 +84,7 @@ class SerialPortPage(BaseClassPage):
 
 
     def open_port(self):
-        selected_port_name = self.portMenu.selected["name"]  # dict
+        selected_port_name = self.portMenu.selected.name  # dict
         port = self.model.serial.open_port(selected_port_name, baudrate=115200)
         if port is not None:
             port.settings.header = b'\xFF\x00'
@@ -77,8 +92,15 @@ class SerialPortPage(BaseClassPage):
             # port.settings.expected_size = 26
             # port.dataReceived.connect(lambda data: print(f"Data received: {data.hex(':')}\n"))
 
-    def on_port_selected(self, name: str, info: dict):
-        print(name, info)
+    def on_port_selected(self, name: str, info: PortInfo):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Open Port")
+        dialog.setModal(True)
+        dialog.setFixedSize(QSize(200, 100))
+        layout = QVBoxLayout()
+        dialog.setLayout(layout)
+        
+
 
     def on_tab_focus(self):
         print("on_tab_focus")
