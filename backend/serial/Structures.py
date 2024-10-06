@@ -1,6 +1,6 @@
 import typing
 
-from utils.ParamList import ParameterList, NumParam, ChoiceParam, BoolParam, TextParam
+from utils.ParamList import ParameterList, NumParam, ChoiceParam, BoolParam, TextParam, ConstParam
 
 
 
@@ -8,19 +8,27 @@ class PortInfo:
     name: str = ""
     description: str = ""
     manufacturer: str = ""
-    baudrates: typing.List[int] = []
+    baudrates: typing.List[str] = []
     busy: bool = False
     bytesPerSecond: int = 0
 
 
 # [ ] (1) SerialSettings: Use ParameterList as base class and take a PortInfo object
-class SerialSettings():
-    baudrate: int = 250000
-    timeout: int = 50 / 1000
-    port: str = ""
-    header: bytes = b""
-    footer: bytes = b""
-    expected_size: int = 0
+class SerialSettings(ParameterList):
+
+    def __init__(self, portInfo: PortInfo):
+        defaultBaudrate = portInfo.baudrates[0]
+        if "115200" in portInfo.baudrates:
+            defaultBaudrate = "115200"
+        super().__init__([
+            ConstParam("port", portInfo.name, "Port"),
+            TextParam("title", portInfo.name + ' ' + portInfo.description, "Device title"),
+            ChoiceParam("baudrate", portInfo.baudrates, defaultBaudrate, "Baudrate"),
+            NumParam("timeout", (0, 1), step=.001, value=.05, text="Timeout (s)"),
+            TextParam("header", "", "Header"),
+            TextParam("footer", "", "Footer"),
+            NumParam("expected_size", (0, 1024), value=0, text="Expected Size")
+        ])
 
 
 class SerialBuffer:
@@ -36,6 +44,10 @@ class SerialBuffer:
         self.buffer.extend(data)
         if len(self.buffer) > self.max_size:
             self.buffer = self.buffer[-self.max_size:]
+
+    def to_ascii(self) -> str:
+        """ Convert the buffer to an ASCII string """
+        return self.buffer.decode("ascii")
 
     def pop_all(self) -> bytearray:
         """ Pop all data from the buffer """

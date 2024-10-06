@@ -12,6 +12,13 @@
             "console": "integratedTerminal",
             // enable faulthandler
             "args": ["-X", "faulthandler"],
+        },
+        {
+            "name": "Run Main File",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/main.py",
+            "console": "integratedTerminal",
         }
     ]
 }

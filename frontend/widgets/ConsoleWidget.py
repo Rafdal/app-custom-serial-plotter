@@ -4,7 +4,7 @@ from PyQt5.QtGui import QFont, QTextCursor
 from frontend.widgets.BasicWidgets import TextInput, Button
 
 class ConsoleWidget(QWidget):
-    def __init__(self, textSelectable=True, wordWrap=True, defaultText="Console output will appear here...", fixedWidth=None):
+    def __init__(self, textSelectable=True, wordWrap=True, defaultText="Console output will appear here...", fixedWidth=None, maxBlockCount=1000):
         super(ConsoleWidget, self).__init__()
         
         self.defaultText = defaultText
@@ -20,6 +20,8 @@ class ConsoleWidget(QWidget):
         self.consoleOutput.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         if textSelectable:
             self.consoleOutput.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        
+        self.consoleOutput.document().setMaximumBlockCount(maxBlockCount)
         
         self.lineCount = QLabel("Lines: 0")
         

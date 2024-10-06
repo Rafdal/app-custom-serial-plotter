@@ -40,7 +40,7 @@ class DynamicSettingsWidget(QWidget):
         layout = QVBoxLayout()
         layout.addWidget(self.scroll_area)
         self.setLayout(layout)
-        self.updateUI(self.paramList)
+        self.updateUI(self.paramList, self.title)
 
     def updateUI(self, paramList, title="Dynamic Settings"):
         self.paramList = paramList
@@ -97,6 +97,8 @@ class DynamicSettingsWidget(QWidget):
                                           on_change=lambda v, k=key: self.on_param_set(k, v),
                                           default=param.value,
                                           regex=param.regex)
+            elif param.type == "const":
+                settingWidget = QLabel(param.text + ": " + str(param.value))
             else:
                 raise ValueError(f"Parameter type '{param.type}' not recognized")
             

@@ -6,9 +6,11 @@ from PyQt5.QtCore import Qt
 from frontend.pages.BaseClassPage import BaseClassPage
 from frontend.widgets.BasicWidgets import DropDownMenu, Button
 from frontend.widgets.CardWidgets import CardWidget, CardListWidget
+from frontend.widgets.DynamicSettingsWidget import DynamicSettingsWidget
 
-
-from backend.serial.Handler import PortInfo, SerialPort
+from backend.serial.Handler import SerialPortsHandler
+from backend.serial.Structures import SerialSettings, PortInfo
+from backend.serial.Port import SerialPort
 
 import typing
 
@@ -17,12 +19,33 @@ import typing
 
 class OpenPortDialog(QDialog):
     """ Popup dialog for configuring and opening a serial port """
-    def __init__(self, portInfo, parent=None):
+    def __init__(self, portInfo: PortInfo, openCallback: typing.Callable[[SerialSettings], bool], parent=None):
         super(OpenPortDialog, self).__init__(parent)
-        self.setWindowTitle("Open Port")
+        self.setWindowTitle("Port Settings Dialog")
         self.setModal(True)
+        self.setMinimumHeight(400)
         self.portInfo = portInfo
+        self.openCallback = openCallback
         self.initUI()    
+
+    def initUI(self):
+        layout = QVBoxLayout()
+        self.setLayout(layout)
+
+        self.settings = SerialSettings(self.portInfo)
+
+        self.dynamicSettingsWidget = DynamicSettingsWidget(self.settings, title=self.portInfo.name + " Port Settings")
+        layout.addWidget(self.dynamicSettingsWidget)
+
+        openButton = QPushButton("Open")
+        openButton.clicked.connect(self.open_port)
+        layout.addWidget(openButton)
+
+    def open_port(self):
+        # if self.settings.validate():
+        if True:    # TODO: Implement the validation
+            self.openCallback(self.settings)
+            self.close()
 
 
 class SerialPortPage(BaseClassPage):
@@ -45,14 +68,19 @@ class SerialPortPage(BaseClassPage):
         self.model.serial.portScanned.connect(self.on_ports_scanned)
                 
         openButton = Button('Open')
-        openButton.clicked.connect(self.open_port)
+        openButton.clicked.connect(self.open_port_settings_dialog)
+
+        settingsButton = Button('Settings')
+        settingsButton.clicked.connect(self.open_port_settings_dialog)
 
         hTopLayout = QHBoxLayout()
 
         hTopLayout.addWidget(scanButton)
         hTopLayout.addSpacing(20)
         hTopLayout.addWidget(self.portMenu)
+        hTopLayout.addSpacing(20)
         hTopLayout.addWidget(openButton)
+        hTopLayout.addWidget(settingsButton)
         hTopLayout.addStretch(1)
         layout.addLayout(hTopLayout)
 
@@ -86,14 +114,27 @@ class SerialPortPage(BaseClassPage):
             self.cardList.addCard(card)
 
 
-    def open_port(self):
-        selected_port_name = self.portMenu.selected.name  # dict
-        port = self.model.serial.open_port(selected_port_name, baudrate=115200)
+    def open_port(self, serialSettings: SerialSettings):
+        if self.portMenu.selected is None:
+            return
+
+        port = self.model.serial.open_port(serialSettings)
         if port is not None:
-            port.settings.header = b'\xFF\x00'
+
             self.on_ports_scanned(self.model.serial.port_list())
             # port.settings.expected_size = 26
             # port.dataReceived.connect(lambda data: print(f"Data received: {data.hex(':')}\n"))
+
+    def open_port_settings_dialog(self):
+        if self.portMenu.selected is None:
+            return
+        port_name = self.portMenu.selected.name
+        portInfo = self.model.serial.port_info(port_name)
+        if portInfo is None:
+            # TODO Implement the error handling or popup
+            return
+        dialog = OpenPortDialog(portInfo, openCallback=self.model.serial.open_port)
+        dialog.exec_()
 
     def on_port_selected(self, name: str, info: PortInfo):
 

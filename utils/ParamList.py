@@ -32,6 +32,11 @@ class ParameterBase():
     def name(self):
         return self.internal_name
 
+class ConstParam(ParameterBase):
+    def __init__(self, name="const", value="CONST VAL", text="Constant"):
+        super().__init__(name, text)
+        self.type = "const"
+        self.value = value
 
 class TextParam(ParameterBase):
     """ Text parameter with a string"""
@@ -134,6 +139,11 @@ class ParameterList():
         if key not in self.internal_parameter_list:
             raise KeyError("Parameter not found")
         return self.internal_parameter_list[key].value
+    
+    def asInt(self, key):
+        if key not in self.internal_parameter_list:
+            raise KeyError("Parameter not found")
+        return int(self.internal_parameter_list[key].value)
     
     def __setitem__(self, key, value):
         if key not in self.internal_parameter_list:

@@ -1,14 +1,15 @@
 from PyQt5.QtCore import QObject, pyqtSignal, QThread, QTimer, QMutex, QMutexLocker
 from PyQt5.QtSerialPort import QSerialPort, QSerialPortInfo
 
-from ...utils.ParamList import ParameterList, NumParam, ChoiceParam, BoolParam, TextParam
+from utils.ParamList import ParameterList, NumParam, ChoiceParam, BoolParam, TextParam
 
 from dataclasses import dataclass
 import typing
 
-from Structures import PortInfo, SerialSettings
+from .Structures import PortInfo, SerialSettings
+# from Structures import PortInfo, SerialSettings
 
-from Port import SerialPort
+from .Port import SerialPort
 
 class SerialPortScannerThread(QThread):
     portScanned = pyqtSignal(dict)
@@ -41,7 +42,8 @@ class SerialPortScannerThread(QThread):
                 portInfo.name = port.portName()
                 portInfo.description = port.description()
                 portInfo.manufacturer = port.manufacturer()
-                portInfo.baudrates = port.standardBaudRates()
+                for baudrate in port.standardBaudRates():
+                    portInfo.baudrates.append(str(baudrate))
                 portInfo.busy = port.isBusy()
                 self.available_ports[port.portName()] = portInfo
             scannedPorts.append(port.portName())
@@ -59,15 +61,14 @@ class SerialPortScannerThread(QThread):
                 available_ports = self.__scan_ports()
                 self.portScanned.emit(available_ports)
                 self.onScanInterval.emit()
-                print()
             self.sleep(self.time_interval)  # sleep for time_interval seconds
-
 
 
 
 class SerialPortsHandler(QObject):
 
     portScanned = pyqtSignal(dict)
+    activePortsChanged = pyqtSignal(dict)
 
     def __init__(self):
         super().__init__()
@@ -81,6 +82,22 @@ class SerialPortsHandler(QObject):
         self.portScannerThread.onScanInterval.connect(self.check_byte_rate)
         self.portScannerThread.start()
 
+    def on_port_data_received(self, port: str, callback: typing.Callable[[bytearray], None]):
+        """ 
+        Connect or disconnect a callback function to the dataReceived signal of a port.
+        - port: str
+        - callback: callable function or None
+            - If None, disconnect the signal
+            - If a function, connect the signal to a callback function that receives a bytearray
+        """
+        if port in self._active_ports:
+            if callback is None:
+                self._active_ports[port].dataReceived.disconnect()
+            else:
+                self._active_ports[port].dataReceived.connect(callback)
+
+    def is_port_active(self, port: str) -> bool:
+        return (port in self._active_ports)
 
     def scan_ports(self):
         ports = self.portScannerThread.scan_ports()
@@ -102,6 +119,11 @@ class SerialPortsHandler(QObject):
     def is_busy(self, port) -> bool:
         return self.available_ports[port].busy
 
+    def port_info(self, port) -> PortInfo:
+        if port not in self.available_ports:
+            return None
+        return self.available_ports[port]
+
     def port_list(self) -> typing.Dict[str, PortInfo]:
         """ Returns a dictionary of available ports with their information.
         
@@ -118,32 +140,33 @@ class SerialPortsHandler(QObject):
                 self.available_ports[port].bytesPerSecond = bytesRead / self.portScannerThread.time_interval
                 self._active_ports[port].bytesRead = 0
             
-    def _handle_scanned_ports(self, available_ports):
+    def _handle_scanned_ports(self, available_ports: typing.Dict[str, PortInfo]):
         self.available_ports = available_ports
         for port in list(self._active_ports.keys()):  # create a copy of keys for iteration
             if port not in self.available_ports:
                 self._active_ports[port].close()
                 self._active_ports.pop(port, None)
+                self.activePortsChanged.emit(self._active_ports)
 
 
     # [ ] (3) open_port: Use the SerialSettings class for configuration
-    def open_port(self, port, baudrate, header=b"", footer=b"", expected_size=0) -> SerialPort:
+    def open_port(self, settings: SerialSettings) -> SerialPort:
+        '''
+        Open a serial port with the specified settings.
+        - returns: SerialPort if connection successful, otherwise None
+        '''
+        port = settings['port']
         print(f"Opening port {port}")
         if port in self._active_ports:
             serialPort = self._active_ports[port]
-            serialPort.settings.baudrate = baudrate
-            serialPort.settings.header = header
-            serialPort.settings.footer = footer
-            serialPort.settings.expected_size = expected_size            
+            serialPort.settings  = settings         
             serialPort.connect()
             return serialPort
         
-        serialPort = SerialPort(port=port, baudrate=baudrate)
-        serialPort.settings.header = header
-        serialPort.settings.footer = footer
-        serialPort.settings.expected_size = expected_size
+        serialPort = SerialPort(settings)
         if serialPort.connect():
             self._active_ports[port] = serialPort
+            self.activePortsChanged.emit(self._active_ports)
             return serialPort
         else:
             return None
@@ -152,6 +175,7 @@ class SerialPortsHandler(QObject):
         if name in self._active_ports and self._active_ports[name].ser.isOpen():
             self._active_ports[name].close()
             self._active_ports.pop(name, None)
+            self.activePortsChanged.emit(self._active_ports)
             return True
         return False
         

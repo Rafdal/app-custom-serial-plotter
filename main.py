@@ -4,9 +4,10 @@ from PyQt5.QtWidgets import QApplication
 
 print("Running main.py")
 
-from backend.MainModel import *
+from backend.MainModel import MainModel
 from frontend.MainWindow import *
 from frontend.pages.SerialPortPage import SerialPortPage
+from frontend.pages.MonitorPage import MonitorPage
 
 import faulthandler
 
@@ -19,7 +20,8 @@ if __name__ == '__main__':
 
     # create pages
     pages = [
-        SerialPortPage()
+        SerialPortPage(),
+        MonitorPage(),
     ]
 
     print("Pages created, creating main window")
