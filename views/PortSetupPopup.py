@@ -42,14 +42,14 @@ class PortSetupPopup(QDialog):
 
     def popup(self):
         port_settings = self.serial_data_model.settings
-        self.baudrate_num_input.setText(str(port_settings['baudrate']))
-        self.sync_bytes_input.setText(port_settings['header'].hex().upper())
+        self.baudrate_num_input.setText(str(port_settings.baudrate))
+        self.sync_bytes_input.setText(port_settings.header.hex().upper())
         self.show()
 
     def subimit_settings(self):
         try:
-            self.serial_data_model.settings['baudrate'] = int(self.baudrate_num_input.text())
-            self.serial_data_model.settings['header'] = bytes.fromhex(self.sync_bytes_input.text())
+            self.serial_data_model.settings.baudrate = int(self.baudrate_num_input.text())
+            self.serial_data_model.settings.header = bytes.fromhex(self.sync_bytes_input.text())
             self.close()
         except Exception as e:
             dialog = QDialog()
