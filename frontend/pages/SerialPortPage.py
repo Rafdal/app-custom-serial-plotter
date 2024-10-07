@@ -68,7 +68,7 @@ class SerialPortPage(BaseClassPage):
         self.model.serial.portScanned.connect(self.on_ports_scanned)
                 
         openButton = Button('Open')
-        openButton.clicked.connect(self.open_port_settings_dialog)
+        openButton.clicked.connect(self.open_port)
 
         settingsButton = Button('Settings')
         settingsButton.clicked.connect(self.open_port_settings_dialog)
@@ -117,13 +117,13 @@ class SerialPortPage(BaseClassPage):
     def open_port(self, serialSettings: SerialSettings):
         if self.portMenu.selected is None:
             return
+        
+        port_info = self.portMenu.selected
+        port_settings = self.model.serial.info2settings(port_info)
 
-        port = self.model.serial.open_port(serialSettings)
+        port = self.model.serial.open_port(port_settings)
         if port is not None:
-
-            self.on_ports_scanned(self.model.serial.port_list())
-            # port.settings.expected_size = 26
-            # port.dataReceived.connect(lambda data: print(f"Data received: {data.hex(':')}\n"))
+            pass
 
     def open_port_settings_dialog(self):
         if self.portMenu.selected is None:

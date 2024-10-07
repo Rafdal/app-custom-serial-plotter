@@ -16,7 +16,7 @@ class ConsoleWidget(QWidget):
         self.consoleOutput.setReadOnly(True)
         self.consoleOutput.setWordWrapMode(wordWrap)
         self.consoleOutput.setFont(QFont("Monospace", 10))
-        self.consoleOutput.setText(defaultText)
+        self.consoleOutput.setText(defaultText + '\n')
         self.consoleOutput.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         if textSelectable:
             self.consoleOutput.setTextInteractionFlags(Qt.TextSelectableByMouse)

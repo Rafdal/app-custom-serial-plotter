@@ -17,13 +17,11 @@ class PortInfo:
 class SerialSettings(ParameterList):
 
     def __init__(self, portInfo: PortInfo):
-        defaultBaudrate = portInfo.baudrates[0]
-        if "115200" in portInfo.baudrates:
-            defaultBaudrate = "115200"
+        defaultBaudrate = "250000"
         super().__init__([
             ConstParam("port", portInfo.name, "Port"),
             TextParam("title", portInfo.name + ' ' + portInfo.description, "Device title"),
-            ChoiceParam("baudrate", portInfo.baudrates, defaultBaudrate, "Baudrate"),
+            TextParam('baudrate', defaultBaudrate, "Baudrate", regex="^$|^[0-9]*$"),
             NumParam("timeout", (0, 1), step=.001, value=.05, text="Timeout (s)"),
             TextParam("header", "", "Header"),
             TextParam("footer", "", "Footer"),

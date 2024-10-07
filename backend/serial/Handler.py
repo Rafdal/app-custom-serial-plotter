@@ -91,10 +91,13 @@ class SerialPortsHandler(QObject):
             - If a function, connect the signal to a callback function that receives a bytearray
         """
         if port in self._active_ports:
-            if callback is None:
-                self._active_ports[port].dataReceived.disconnect()
-            else:
-                self._active_ports[port].dataReceived.connect(callback)
+            try:
+                if callback is None:
+                    self._active_ports[port].dataReceived.disconnect()
+                else:
+                    self._active_ports[port].dataReceived.connect(callback)
+            except:
+                pass
 
     def is_port_active(self, port: str) -> bool:
         return (port in self._active_ports)
@@ -178,4 +181,6 @@ class SerialPortsHandler(QObject):
             self.activePortsChanged.emit(self._active_ports)
             return True
         return False
-        
+
+    def info2settings(self, port_info: PortInfo) -> SerialSettings:
+        return SerialSettings(port_info)

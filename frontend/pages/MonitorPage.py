@@ -20,6 +20,7 @@ class MonitorPage(BaseClassPage):
         # add a button to open the serial port settings dialog
         openButton = Button("Open Monitor", on_click=self.open_monitor)
         closeButton = Button("Close Monitor", on_click=self.close_monitor)
+        reconnectButton = Button("Reconnect", on_click=self.reconnect)
 
         maxLines = NumberInput("Max Lines", interval=(1, 10000), step=1, default=1000, on_change=self.on_max_lines_changed)
 
@@ -35,6 +36,7 @@ class MonitorPage(BaseClassPage):
         hTopLayout.addSpacing(20)
         hTopLayout.addWidget(maxLines)
         hTopLayout.addStretch(1)
+        hTopLayout.addWidget(reconnectButton)
 
         layout.addLayout(hTopLayout)
         layout.addWidget(self.consoleWidget)
@@ -50,13 +52,24 @@ class MonitorPage(BaseClassPage):
             self.model.serial.on_port_data_received(port, self.on_data_received)
 
     def on_data_received(self, data: bytearray):
-        self.consoleWidget.appendText(data.decode())
+        try:
+            self.consoleWidget.appendText(data.decode())
+        except UnicodeDecodeError:
+            self.consoleWidget.appendText(str(data))
 
     def on_active_ports_changed(self, active_ports):
         self.portMenu.set_options(active_ports)
 
     def on_port_selected(self, port: str, _):
         pass
+
+    def reconnect(self):
+        port = self.portMenu.selected_title
+        if self.model.serial.is_port_active(port):
+            port_settings = self.model.serial.active_ports()[port].settings
+            self.model.serial.close_port(port)
+            self.model.serial.open_port(port_settings)
+            self.open_monitor()
 
     def on_max_lines_changed(self, value):
         self.consoleWidget.consoleOutput.document().setMaximumBlockCount(value)
